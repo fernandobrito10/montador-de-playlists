@@ -2,13 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ncurses.h>
-#ifdef _WIN32
-#include <windows.h>
-#define usleep(microseconds) Sleep(microseconds / 1000)
-#endif
 
-#define MAX_OPTIONS 8
 #define MAX_PLAYLISTS 10
 #define MAX_MUSICAS 50
 #define GREEN "\033[1;32m"
@@ -64,7 +58,6 @@ void imprimirTitulo() {
 }
 
 void montarPlaylist(struct Playlist *play) {
-    keypad(stdscr, FALSE);
     printf("Digite o nome da playlist: ");
     scanf("%s", play->nome);
     limparBufferEntrada();
@@ -93,7 +86,6 @@ void montarPlaylist(struct Playlist *play) {
 }
 
 void adicionarMusicaAPlaylist(struct Playlist *play) {
-    keypad(stdscr, FALSE);
     if (play->numMusicas < MAX_MUSICAS) {
         printf("Digite o nome da musica: ");
         scanf("%s", play->musicas[play->numMusicas]);
@@ -107,40 +99,6 @@ void adicionarMusicaAPlaylist(struct Playlist *play) {
         printf("Limite de musicas atingido para esta playlist.\n");
     }
 }
-
-void excluirMusicaDePlaylist(struct Playlist *play) {
-    keypad(stdscr, FALSE);
-    if (play->numMusicas == 0) {
-        printf("A playlist '%s' está vazia.\n", play->nome);
-        return;
-    }
-
-    // Mostrar a lista de músicas da playlist
-    printf("Músicas na playlist '%s':\n", play->nome);
-    for (int i = 0; i < play->numMusicas; i++) {
-        printf("%d. %s - %s\n", i + 1, play->musicas[i], play->artistas[i]);
-    }
-
-    // Perguntar qual música excluir
-    printf("Escolha a música a ser excluída (1-%d): ", play->numMusicas);
-    int escolha;
-    scanf("%d", &escolha);
-    limparBufferEntrada();
-
-    if (escolha >= 1 && escolha <= play->numMusicas) {
-        // Remover a música selecionada
-        for (int i = escolha - 1; i < play->numMusicas - 1; i++) {
-            strcpy(play->musicas[i], play->musicas[i + 1]);
-            strcpy(play->artistas[i], play->artistas[i + 1]);
-        }
-
-        play->numMusicas--; // Reduz o número de músicas
-        printf("Música excluída com sucesso.\n");
-    } else {
-        printf("Escolha inválida.\n");
-    }
-}
-
 
 void mostrarPlaylist(struct Playlist *play) {
     if (play->numMusicas > 0) {
@@ -194,7 +152,6 @@ void carregarPlaylists(struct Playlist playlists[], int *numPlaylists) {
 }
 
 void excluirPlaylist(struct Playlist playlists[], int *numPlaylists) {
-    keypad(stdscr, FALSE);
     mostrarTodasPlaylists(playlists, *numPlaylists);
     if (*numPlaylists > 0) {
         printf("Escolha a playlist a ser excluida (1-%d): ", *numPlaylists);
@@ -214,8 +171,39 @@ void excluirPlaylist(struct Playlist playlists[], int *numPlaylists) {
     }
 }
 
+void excluirMusicaDePlaylist(struct Playlist *play) {
+    if (play->numMusicas == 0) {
+        printf("A playlist '%s' está vazia.\n", play->nome);
+        return;
+    }
+
+    // Mostrar a lista de músicas da playlist
+    printf("Músicas na playlist '%s':\n", play->nome);
+    for (int i = 0; i < play->numMusicas; i++) {
+        printf("%d. %s - %s\n", i + 1, play->musicas[i], play->artistas[i]);
+    }
+
+    // Perguntar qual música excluir
+    printf("Escolha a música a ser excluída (1-%d): ", play->numMusicas);
+    int escolha;
+    scanf("%d", &escolha);
+    limparBufferEntrada();
+
+    if (escolha >= 1 && escolha <= play->numMusicas) {
+        // Remover a música selecionada
+        for (int i = escolha - 1; i < play->numMusicas - 1; i++) {
+            strcpy(play->musicas[i], play->musicas[i + 1]);
+            strcpy(play->artistas[i], play->artistas[i + 1]);
+        }
+
+        play->numMusicas--; // Reduz o número de músicas
+        printf("Música excluída com sucesso.\n");
+    } else {
+        printf("Escolha inválida.\n");
+    }
+}
+
 void atualizarMusicaDePlaylist(struct Playlist *play) {
-    keypad(stdscr, FALSE);
     if (play->numMusicas == 0) {
         printf("A playlist '%s' está vazia.\n", play->nome);
         return;
@@ -247,8 +235,59 @@ void atualizarMusicaDePlaylist(struct Playlist *play) {
     }
 }
 
+void mostrarTodasAsMusicas(struct Playlist playlists[], int numPlaylists) {
+    // Vetores temporários para armazenar todas as músicas e artistas
+    char todasMusicas[MAX_PLAYLISTS * MAX_MUSICAS][50];
+    char todosArtistas[MAX_PLAYLISTS * MAX_MUSICAS][50];
+    int totalMusicas = 0;
 
-/*void mostrarMenu() {
+    // Percorre todas as playlists e adiciona as músicas à lista geral
+    for (int i = 0; i < numPlaylists; i++) {
+        for (int j = 0; j < playlists[i].numMusicas; j++) {
+            strcpy(todasMusicas[totalMusicas], playlists[i].musicas[j]);
+            strcpy(todosArtistas[totalMusicas], playlists[i].artistas[j]);
+            totalMusicas++;
+        }
+    }
+
+    // Ordena as músicas em ordem alfabética (usando Bubble Sort)
+    for (int i = 0; i < totalMusicas - 1; i++) {
+        for (int j = 0; j < totalMusicas - i - 1; j++) {
+            if (strcmp(todasMusicas[j], todasMusicas[j + 1]) > 0) {
+                // Troca as músicas
+                char tempMusica[50], tempArtista[50];
+                strcpy(tempMusica, todasMusicas[j]);
+                strcpy(todasMusicas[j], todasMusicas[j + 1]);
+                strcpy(todasMusicas[j + 1], tempMusica);
+
+                // Troca os artistas correspondentes
+                strcpy(tempArtista, todosArtistas[j]);
+                strcpy(todosArtistas[j], todosArtistas[j + 1]);
+                strcpy(todosArtistas[j + 1], tempArtista);
+            }
+        }
+    }
+
+    // Exibe a lista de músicas ordenadas
+    printf("Lista de todas as músicas (ordenadas alfabeticamente):\n");
+    printf("Música | Artista\n");
+    printf("------------------------\n");
+    for (int i = 0; i < totalMusicas; i++) {
+        printf("%s | %s\n", todasMusicas[i], todosArtistas[i]);
+    }
+    printf("------------------------\n");
+
+    // Pergunta se o usuário quer voltar ao menu
+    int opcao;
+    printf("Deseja voltar ao menu principal? (1 para Sim, 0 para Não): ");
+    scanf("%d", &opcao);
+    if (opcao != 1) {
+        mostrarTodasAsMusicas(playlists, numPlaylists); // Recursivamente chama a função até o usuário escolher voltar
+    }
+}
+
+
+void mostrarMenu() {
     system("clear");
     printf("\e[48;5;2m");
     printf("\e[38;5;0m");
@@ -261,33 +300,11 @@ void atualizarMusicaDePlaylist(struct Playlist *play) {
     printf("5. Mostrar playlists\n");
     printf("6. Escolher uma playlist para mostrar\n");
     printf("7. Excluir uma playlist\n");
-    printf("8. Sair\n");
+    printf("8. Listar músicas em ordem alfabética\n");
+    printf("9. Sair\n");
     printf("\e[48;5;208m");
     printf("Escolha uma opção: ");
     printf("\e[m");
-}
-*/
-
-void mostrarMenuComSetas(int highlight) {
-    const char *opcoes[] = {
-        "1. Criar uma nova playlist",
-        "2. Adicionar música a uma playlist existente",
-        "3. Excluir música de uma playlist",
-        "4. Atualizar música de uma playlist",
-        "5. Mostrar playlists",
-        "6. Escolher uma playlist para mostrar",
-        "7. Excluir uma playlist",
-        "8. Sair"
-    };
-
-    for (int i = 0; i < MAX_OPTIONS; ++i) {
-        if (i == highlight) {
-            attron(A_REVERSE); // Inverter as cores para destacar a opção
-        }
-        mvprintw(i + 1, 1, "%s", opcoes[i]); // Corrigido: adicionado o formato %s
-        attroff(A_REVERSE); // Voltar à exibição normal
-    }
-    refresh();
 }
 
 
@@ -297,148 +314,111 @@ int main() {
     struct Playlist playlists[MAX_PLAYLISTS];
     int numPlaylists = 0;
     int opcao = 0;
-    
-    
-
     imprimirTitulo();
-    initscr(); // Inicializa o ncurses
-    clear();
-    noecho();
-    cbreak();
-    keypad(stdscr, TRUE);
     carregarPlaylists(playlists, &numPlaylists);
 
-    int highlight = 0; // Para controlar a opção selecionada no menu
-    int escolha = 0;
-    int entrada;
-
     do {
-        clear();
-        mostrarMenuComSetas(highlight); // Mostra o menu com setas
-        entrada = getch(); // Captura a entrada do teclado
+        mostrarMenu();
+        scanf("%d", &opcao);
+        limparBufferEntrada();
 
-        switch (entrada) {
-            case KEY_UP:
-                highlight--;
-                if (highlight < 0) highlight = MAX_OPTIONS - 1; // Circular
+        switch (opcao) {
+            case 1:
+                if (numPlaylists < MAX_PLAYLISTS) {
+                    montarPlaylist(&playlists[numPlaylists]);
+                    numPlaylists++;
+                    salvarPlaylists(playlists, numPlaylists);
+                } else {
+                    printf("Limite de playlists atingido.\n");
+                }
                 break;
-            case KEY_DOWN:
-                highlight++;
-                if (highlight >= MAX_OPTIONS) highlight = 0; // Circular
-                break;
-            case 10: // Enter pressionado
-                escolha = highlight + 1; // Traduzimos a opção para um número
-                break;
-            default:
-                break;
-        }
-
-        if (entrada == 10) { // Se Enter foi pressionado
-            opcao = escolha;  // Atribuímos a escolha ao `opcao`
-            switch (opcao) {
-                case 1:
-                    keypad(stdscr, FALSE);
-                    if (numPlaylists < MAX_PLAYLISTS) {
-                        montarPlaylist(&playlists[numPlaylists]);
-                        numPlaylists++;
+            case 2:
+                mostrarTodasPlaylists(playlists, numPlaylists);
+                if (numPlaylists > 0) {
+                    printf("Escolha a playlist (1-%d): ", numPlaylists);
+                    int escolha;
+                    scanf("%d", &escolha);
+                    limparBufferEntrada();
+                    if (escolha >= 1 && escolha <= numPlaylists) {
+                        adicionarMusicaAPlaylist(&playlists[escolha - 1]);
                         salvarPlaylists(playlists, numPlaylists);
                     } else {
-                        printw("Limite de playlists atingido.\n");
+                        printf("Escolha inválida.\n");
                     }
-                    break;
-                case 2:
-                    keypad(stdscr, FALSE);
+                }
+                break;
+            case 3:
+                mostrarTodasPlaylists(playlists, numPlaylists);
+                if (numPlaylists > 0) {
+                    printf("Escolha a playlist (1-%d): ", numPlaylists);
+                    int escolha;
+                    scanf("%d", &escolha);
+                    limparBufferEntrada();
+                    if (escolha >= 1 && escolha <= numPlaylists) {
+                        excluirMusicaDePlaylist(&playlists[escolha - 1]);
+                        salvarPlaylists(playlists, numPlaylists);
+                    } else {
+                        printf("Escolha inválida.\n");
+                    }
+                }
+                break;
+            case 4:  // Caso para atualizar uma música
+                mostrarTodasPlaylists(playlists, numPlaylists);
+                if (numPlaylists > 0) {
+                    printf("Escolha a playlist (1-%d): ", numPlaylists);
+                    int escolha;
+                    scanf("%d", &escolha);
+                    limparBufferEntrada();
+                    if (escolha >= 1 && escolha <= numPlaylists) {
+                        atualizarMusicaDePlaylist(&playlists[escolha - 1]);
+                        salvarPlaylists(playlists, numPlaylists);
+                    } else {
+                        printf("Escolha inválida.\n");
+                    }
+                }
+                break;
+            case 5:
+                do {
+                    mostrarTodasPlaylists(playlists, numPlaylists);
+                    printf("Quer sair desse menu? 1 para não 2 para sim. ");
+                    scanf("%d", &mostrandoPlaylist);
+                } while(mostrandoPlaylist != 2);
+                mostrandoPlaylist = 0;
+                break;
+            case 6:
+                do {
+                    system("clear");
                     mostrarTodasPlaylists(playlists, numPlaylists);
                     if (numPlaylists > 0) {
-                        printw("Escolha a playlist (1-%d): ", numPlaylists);
+                        printf("Escolha a playlist (1-%d): ", numPlaylists);
                         int escolha;
-                        scanw("%d", &escolha);
+                        scanf("%d", &escolha);
                         limparBufferEntrada();
                         if (escolha >= 1 && escolha <= numPlaylists) {
-                            adicionarMusicaAPlaylist(&playlists[escolha - 1]);
-                            salvarPlaylists(playlists, numPlaylists);
+                            mostrarPlaylist(&playlists[escolha - 1]);
                         } else {
-                            printw("Escolha inválida.\n");
+                            printf("Escolha inválida.\n");
                         }
                     }
-                    break;
-                case 3:
-                    keypad(stdscr, FALSE);
-                    mostrarTodasPlaylists(playlists, numPlaylists);
-                    if (numPlaylists > 0) {
-                        printw("Escolha a playlist (1-%d): ", numPlaylists);
-                        int escolha;
-                        scanw("%d", &escolha);
-                        limparBufferEntrada();
-                        if (escolha >= 1 && escolha <= numPlaylists) {
-                            excluirMusicaDePlaylist(&playlists[escolha - 1]);
-                            salvarPlaylists(playlists, numPlaylists);
-                        } else {
-                            printw("Escolha inválida.\n");
-                        }
-                    }
-                    break;
-                case 4:
-                    mostrarTodasPlaylists(playlists, numPlaylists);
-                    if (numPlaylists > 0) {
-                        printw("Escolha a playlist (1-%d): ", numPlaylists);
-                        int escolha;
-                        scanw("%d", &escolha);
-                        limparBufferEntrada();
-                        if (escolha >= 1 && escolha <= numPlaylists) {
-                            atualizarMusicaDePlaylist(&playlists[escolha - 1]);
-                            salvarPlaylists(playlists, numPlaylists);
-                        } else {
-                            printw("Escolha inválida.\n");
-                        }
-                    }
-                    break;
-                case 5:
-                    keypad(stdscr, FALSE);
-                    do {
-                        mostrarTodasPlaylists(playlists, numPlaylists);
-                        printw("Quer sair desse menu? 1 para não 2 para sim. ");
-                        scanw("%d", &mostrandoPlaylist);
-                    } while(mostrandoPlaylist != 2);
-                    mostrandoPlaylist = 0;
-                    break;
-                case 6:
-                    do {
-                        keypad(stdscr, FALSE);
-                        clear();
-                        mostrarTodasPlaylists(playlists, numPlaylists);
-                        if (numPlaylists > 0) {
-                            printw("Escolha a playlist (1-%d): ", numPlaylists);
-                            int escolha;
-                            scanw("%d", &escolha);
-                            limparBufferEntrada();
-                            if (escolha >= 1 && escolha <= numPlaylists) {
-                                mostrarPlaylist(&playlists[escolha - 1]);
-                            } else {
-                                printw("Escolha inválida.\n");
-                            }
-                        }
-                        printw("Quer sair desse menu? 1 para não 2 para sim. ");
-                        scanw("%d", &mostrandoPlaylist);
-                    } while(mostrandoPlaylist != 2);
-                    mostrandoPlaylist = 0;
-                    break;
-                case 7:
-                    keypad(stdscr, FALSE);
-                    excluirPlaylist(playlists, &numPlaylists);
-                    break;
-                case 8:
-                    keypad(stdscr, FALSE);
-                    printw("Saindo...\n");
-                    break;
-                default:
-                    printw("Opção inválida. Tente novamente.\n");
-                    break;
-            }
+                    printf("Quer sair desse menu? 1 para não 2 para sim. ");
+                    scanf("%d", &mostrandoPlaylist);
+                } while(mostrandoPlaylist != 2);
+                mostrandoPlaylist = 0;
+                break;
+            case 7:
+                excluirPlaylist(playlists, &numPlaylists);
+                break;
+            case 8:
+                mostrarTodasAsMusicas(playlists, numPlaylists);
+                break;
+            case 9:
+                printf("Saindo...\n");
+                break;
+            default:
+                printf("Opção inválida. Tente novamente.\n");
+                break;
         }
-    } while (opcao != 8);
-
-    endwin(); // Finaliza a sessão ncurses
+    } while (opcao != 9);
 
     return 0;
 }
